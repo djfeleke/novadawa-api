@@ -17,6 +17,8 @@ from app.config import settings
 from app.database import create_pool
 from app.routers.health import router as health_router
 from app.routers.drugs import router as drugs_router
+from app.routers.dosing import router as dosing_router
+from app.routers.tenants import router as tenants_router
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -55,3 +57,5 @@ app.add_middleware(
 # Routers
 app.include_router(health_router)
 app.include_router(drugs_router)
+app.include_router(dosing_router)
+app.include_router(tenants_router)
