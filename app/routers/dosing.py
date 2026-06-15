@@ -134,6 +134,7 @@ async def calculate_dose(
     for r in rows:
         # Compute per-dose mg
         capped = False
+        is_calculable = True
         if r["dose_mg_per_kg_day"] is not None:
             daily_mg = float(r["dose_mg_per_kg_day"]) * weight_kg
             per_dose_mg = daily_mg / r["doses_per_day"]
@@ -141,43 +142,52 @@ async def calculate_dose(
             daily_mg = float(r["dose_fixed_mg"])
             per_dose_mg = daily_mg / r["doses_per_day"]
         else:
-            continue
+            # Non-weight-based dose (inhaled puffs, topical application,
+            # nebulized volume). Instructions live in the notes field — we
+            # still return the row so the pharmacist sees the guideline.
+            is_calculable = False
+            per_dose_mg = None
+            daily_mg = None
 
-        # Apply ceiling
-        if r["max_single_dose_mg"] and per_dose_mg > float(r["max_single_dose_mg"]):
-            per_dose_mg = float(r["max_single_dose_mg"])
-            capped = True
+        # Apply ceiling (only when we computed a numeric dose)
+        if is_calculable:
+            if r["max_single_dose_mg"] and per_dose_mg > float(r["max_single_dose_mg"]):
+                per_dose_mg = float(r["max_single_dose_mg"])
+                capped = True
 
-        actual_daily = per_dose_mg * r["doses_per_day"]
-        if r["max_daily_dose_mg"] and actual_daily > float(r["max_daily_dose_mg"]):
-            per_dose_mg = float(r["max_daily_dose_mg"]) / r["doses_per_day"]
-            actual_daily = float(r["max_daily_dose_mg"])
-            capped = True
+            actual_daily = per_dose_mg * r["doses_per_day"]
+            if r["max_daily_dose_mg"] and actual_daily > float(r["max_daily_dose_mg"]):
+                per_dose_mg = float(r["max_daily_dose_mg"]) / r["doses_per_day"]
+                actual_daily = float(r["max_daily_dose_mg"])
+                capped = True
+        else:
+            actual_daily = None
 
-        # Compute volume per SKU
+        # Compute volume per SKU (only when we have a numeric per-dose mg)
         volumes = []
-        for sku in skus:
-            conc = _parse_concentration(sku["strength"] or "")
-            if conc and conc > 0:
-                vol_ml = round(per_dose_mg / conc, 1)
-                volumes.append(DoseVolume(
-                    sku_id=str(sku["id"]),
-                    dosage_form=sku["dosage_form"],
-                    strength=sku["strength"],
-                    concentration_mg_per_ml=round(conc, 2),
-                    volume_ml=vol_ml,
-                    volume_label=f"{vol_ml} ml",
-                ))
-            else:
-                # Tablet / capsule — show mg, not ml
-                volumes.append(DoseVolume(
-                    sku_id=str(sku["id"]),
-                    dosage_form=sku["dosage_form"],
-                    strength=sku["strength"],
-                    concentration_mg_per_ml=None,
-                    volume_ml=None,
-                    volume_label=f"{round(per_dose_mg, 1)} mg",
-                ))
+        if is_calculable:
+            for sku in skus:
+                conc = _parse_concentration(sku["strength"] or "")
+                if conc and conc > 0:
+                    vol_ml = round(per_dose_mg / conc, 1)
+                    volumes.append(DoseVolume(
+                        sku_id=str(sku["id"]),
+                        dosage_form=sku["dosage_form"],
+                        strength=sku["strength"],
+                        concentration_mg_per_ml=round(conc, 2),
+                        volume_ml=vol_ml,
+                        volume_label=f"{vol_ml} ml",
+                    ))
+                else:
+                    # Tablet / capsule — show mg, not ml
+                    volumes.append(DoseVolume(
+                        sku_id=str(sku["id"]),
+                        dosage_form=sku["dosage_form"],
+                        strength=sku["strength"],
+                        concentration_mg_per_ml=None,
+                        volume_ml=None,
+                        volume_label=f"{round(per_dose_mg, 1)} mg",
+                    ))
 
         calculated.append(CalculatedDose(
             guideline_id=r["guideline_id"],
@@ -186,8 +196,9 @@ async def calculate_dose(
             frequency=r["frequency"],
             doses_per_day=r["doses_per_day"],
             duration_days=r["duration_days"],
-            per_dose_mg=round(per_dose_mg, 1),
-            daily_dose_mg=round(actual_daily, 1),
+            per_dose_mg=round(per_dose_mg, 1) if per_dose_mg is not None else None,
+            daily_dose_mg=round(actual_daily, 1) if actual_daily is not None else None,
+            is_calculable=is_calculable,
             volumes=volumes,
             max_single_dose_mg=float(r["max_single_dose_mg"]) if r["max_single_dose_mg"] else None,
             max_daily_dose_mg=float(r["max_daily_dose_mg"]) if r["max_daily_dose_mg"] else None,

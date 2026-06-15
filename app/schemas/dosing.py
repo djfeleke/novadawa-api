@@ -42,9 +42,11 @@ class CalculatedDose(BaseModel):
     frequency: str
     doses_per_day: int
     duration_days: Optional[int] = None
-    # Computed amounts
-    per_dose_mg: float
-    daily_dose_mg: float
+    # Computed amounts — null for non-weight-based doses (inhaled puffs,
+    # topical application, etc.) where instructions live in `notes`.
+    per_dose_mg: Optional[float] = None
+    daily_dose_mg: Optional[float] = None
+    is_calculable: bool = True   # False when dose is by puffs/application/drops
     # Volume per available formulation
     volumes: list["DoseVolume"] = []
     # Safety
