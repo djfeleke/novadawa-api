@@ -20,6 +20,7 @@ from app.routers.drugs import router as drugs_router
 from app.routers.dosing import router as dosing_router
 from app.routers.tenants import router as tenants_router
 from app.routers.inventory import router as inventory_router
+from app.routers.sales import router as sales_router
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -61,3 +62,4 @@ app.include_router(drugs_router)
 app.include_router(dosing_router)
 app.include_router(tenants_router)
 app.include_router(inventory_router)
+app.include_router(sales_router)
