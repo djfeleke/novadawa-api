@@ -338,7 +338,7 @@ INSERT INTO dosing_guideline (
   'Higher dose for high fever or pain. Minimum age 6 months.', true ),
 
 -- ── Cotrimoxazole (Sulfamethoxazole/Trimethoprim) ───────────────────
-( (SELECT id FROM drug WHERE inn_name ILIKE '%trimethoprim%' OR name ILIKE '%cotrimoxazole%' LIMIT 1),
+( (SELECT id FROM drug WHERE inn_name ILIKE '%trimethoprim%' OR inn_name ILIKE '%cotrimoxazole%' LIMIT 1),
   1, 'UTI / Bacterial infection', 'oral',
   2, NULL, NULL, NULL,
   NULL, NULL,            -- 8-12mg TMP/kg/day — stored as range in notes
@@ -348,7 +348,7 @@ INSERT INTO dosing_guideline (
   'Dose based on TMP component: 8-12mg TMP/kg/day divided BID. See WHO weight-band table.', true ),
 
 -- ── Cephalexin ──────────────────────────────────────────────────────
-( (SELECT id FROM drug WHERE inn_name ILIKE 'cephalexin%' OR name ILIKE 'cefalexin%' LIMIT 1),
+( (SELECT id FROM drug WHERE inn_name ILIKE 'cephalexin%' OR inn_name ILIKE 'cefalexin%' LIMIT 1),
   1, 'Skin and soft tissue infection', 'oral',
   3, NULL, NULL, NULL,
   100.00, NULL,          -- 100mg/kg/day
@@ -378,7 +378,7 @@ INSERT INTO dosing_guideline (
   '1-2mg/kg/day for 3-5 days. Usually given as single morning dose.', true ),
 
 -- ── ORS (Oral Rehydration Salts) ────────────────────────────────────
-( (SELECT id FROM drug WHERE inn_name ILIKE '%oral rehydration%' OR name ILIKE 'ORS%' LIMIT 1),
+( (SELECT id FROM drug WHERE inn_name ILIKE '%oral rehydration%' OR inn_name ILIKE 'ORS%' LIMIT 1),
   1, 'Mild-moderate dehydration', 'oral',
   0, NULL, NULL, NULL,
   NULL, NULL,
