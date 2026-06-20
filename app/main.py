@@ -22,6 +22,7 @@ from app.routers.tenants import router as tenants_router
 from app.routers.inventory import router as inventory_router
 from app.routers.sales import router as sales_router
 from app.routers.products import router as products_router
+from app.routers.suppliers import router as suppliers_router
 
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
@@ -65,3 +66,4 @@ app.include_router(tenants_router)
 app.include_router(inventory_router)
 app.include_router(sales_router)
 app.include_router(products_router)
+app.include_router(suppliers_router)
