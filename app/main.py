@@ -23,7 +23,13 @@ from app.routers.inventory import router as inventory_router
 from app.routers.sales import router as sales_router
 from app.routers.products import router as products_router
 from app.routers.suppliers import router as suppliers_router
-
+from app.routers.interactions import router as interactions_router
+from app.routers.sale_history import router as sale_history_router
+from app.routers.sale_reversal import router as sale_reversal_router
+from app.routers.inventory_adjust import router as inventory_adjust_router
+from app.routers.inventory_alerts import router as inventory_alerts_router
+from app.routers.narcotics import router as narcotics_router
+from app.routers.analytics import router as analytics_router
 logging.basicConfig(level=settings.log_level)
 logger = logging.getLogger(__name__)
 
@@ -67,3 +73,10 @@ app.include_router(inventory_router)
 app.include_router(sales_router)
 app.include_router(products_router)
 app.include_router(suppliers_router)
+app.include_router(interactions_router)
+app.include_router(sale_history_router)
+app.include_router(sale_reversal_router)
+app.include_router(inventory_adjust_router)
+app.include_router(inventory_alerts_router)
+app.include_router(narcotics_router)
+app.include_router(analytics_router)

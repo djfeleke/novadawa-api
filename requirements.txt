@@ -5,6 +5,7 @@ pydantic==2.7.1
 pydantic-settings==2.2.1
 firebase-admin==6.5.0
 python-jose[cryptography]==3.3.0
+reportlab==5.0.0       # narcotics register PDF export
 httpx==0.27.0          # for testing
 pytest==8.2.0
 pytest-asyncio==0.23.6

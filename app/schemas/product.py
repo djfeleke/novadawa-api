@@ -1,12 +1,7 @@
 """Pydantic models for product management."""
-
 from typing import Optional
-
 from pydantic import BaseModel, Field
-
-
 # ---------- Create ----------
-
 class ProductCreate(BaseModel):
     drug_sku_id: str
     pharmacy_group_id: str
@@ -19,10 +14,7 @@ class ProductCreate(BaseModel):
     image_url: Optional[str] = None
     country_of_origin: Optional[str] = Field(None, max_length=2)
     supplier_id: Optional[str] = None
-
-
 # ---------- Update (PATCH) ----------
-
 class ProductUpdate(BaseModel):
     brand_name: Optional[str] = None
     pack_size: Optional[int] = Field(None, gt=0)
@@ -33,10 +25,8 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = None
     country_of_origin: Optional[str] = Field(None, max_length=2)
     supplier_id: Optional[str] = None
-
-
+    reorder_level: Optional[int] = Field(None, ge=0)   # per-product low-stock threshold
 # ---------- Response ----------
-
 class ProductResponse(BaseModel):
     id: str
     drug_sku_id: str
@@ -55,10 +45,7 @@ class ProductResponse(BaseModel):
     inn_name: Optional[str] = None
     dosage_form: Optional[str] = None
     strength: Optional[str] = None
-
-
 # ---------- Barcode lookup ----------
-
 class BarcodeLookupResponse(BaseModel):
     product: ProductResponse
     branch_stock: Optional[int] = None   # if branch_id provided
