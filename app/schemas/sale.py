@@ -2,20 +2,81 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------- Narcotics (controlled substance compliance) ----------
 
+# Fields the pharmacist supplies from the prescription / patient. Any of these
+# may be missing in the real world (e.g. prescriber licence not retrievable);
+# when that happens an override_reason must be given so the gap is a documented
+# professional decision rather than a silent omission.
+_OVERRIDABLE_FIELDS = (
+    "patient_full_name",
+    "patient_age",
+    "patient_sex",
+    "patient_address",
+    "patient_id_type",
+    "patient_id_number",
+    "prescribing_doctor_name",
+    "prescribing_doctor_license",
+    "prescription_serial",
+    "prescription_image_url",
+)
+
+
 class NarcoticsInfo(BaseModel):
-    """Required when dispensing a controlled substance."""
-    patient_full_name: str
-    patient_id_type: Literal["kebele_id", "passport", "drivers_license", "other"]
-    patient_id_number: str
-    prescribing_doctor_name: str
-    prescribing_doctor_license: str
-    prescription_serial: str
-    prescription_image_url: str
+    """
+    Controlled-substance dispense record (EFDA registers NPS/09/A & NPS/09/B).
+
+    All human-supplied fields are required by default. If any is genuinely
+    unavailable, the pharmacist may omit it ONLY by supplying override_reason
+    — one reason covers the whole dispense (controlled scripts are single-drug,
+    colour-coded). System-derived data (drug, quantity, dispenser, balance) is
+    never part of this payload and can never be overridden.
+    """
+    # Patient (official register columns: Name, Age, Sex, Address)
+    patient_full_name: Optional[str] = None
+    patient_age: Optional[int] = Field(default=None, ge=0, le=150)
+    patient_sex: Optional[Literal["M", "F"]] = None
+    patient_address: Optional[str] = None
+    patient_id_type: Optional[
+        Literal["kebele_id", "passport", "drivers_license", "other"]
+    ] = None
+    patient_id_number: Optional[str] = None
+
+    # Prescriber + prescription
+    prescribing_doctor_name: Optional[str] = None
+    prescribing_doctor_license: Optional[str] = None
+    prescription_serial: Optional[str] = None
+    prescription_image_url: Optional[str] = None
+
+    # Override: when present, missing human-supplied fields above are permitted
+    # and the dispense is recorded as a documented exception.
+    override_reason: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _require_unless_overridden(self) -> "NarcoticsInfo":
+        override = (self.override_reason or "").strip()
+        if override:
+            # Documented exception: missing human fields are allowed.
+            # Normalise the stored reason to the trimmed value.
+            self.override_reason = override
+            return self
+        # No override -> every human-supplied field must be present & non-empty.
+        missing = []
+        for f in _OVERRIDABLE_FIELDS:
+            v = getattr(self, f)
+            if v is None or (isinstance(v, str) and not v.strip()):
+                missing.append(f)
+        if missing:
+            raise ValueError(
+                "Controlled-substance dispense is missing required field(s): "
+                + ", ".join(missing)
+                + ". Supply them, or set override_reason to dispense with an "
+                "audited exception."
+            )
+        return self
 
 
 # ---------- Checkout request ----------
@@ -74,3 +135,4 @@ class CheckoutResponse(BaseModel):
     sale_status: str
     lines: list[SaleLineResponse]
     narcotics_entries: int
+    narcotics_overrides: int = 0

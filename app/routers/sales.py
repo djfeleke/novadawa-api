@@ -48,8 +48,13 @@ async def checkout(
     5. Records inventory_movement (type='sale')
     6. Writes narcotics_register for controlled substances
 
+    Controlled-substance lines require narcotics info. Individual human-supplied
+    fields (patient/prescriber/prescription) may be omitted only when the
+    narcotics payload carries an override_reason; the dispense is then recorded
+    as an audited exception (override_reason + overridden_by_user_id).
+
     Hard-rejects (400) if any product has insufficient non-expired stock
-    or a controlled substance line lacks narcotics info.
+    or a controlled substance line lacks narcotics info entirely.
     """
     # Validate branch exists
     branch = await db.fetchval("SELECT id FROM branch WHERE id = $1", branch_id)
@@ -68,7 +73,9 @@ async def checkout(
             meta = await db.fetchrow(
                 """
                 SELECT p.id AS product_id, p.sale_unit_size, p.drug_sku_id,
-                       d.controlled_substance, d.inn_name
+                       (d.controlled_substance OR ds.controlled_substance)
+                           AS controlled_substance,
+                       d.inn_name
                 FROM product p
                 JOIN drug_sku ds ON ds.id = p.drug_sku_id
                 JOIN drug d ON d.id = ds.drug_id
@@ -207,6 +214,7 @@ async def checkout(
 
         response_lines: list[SaleLineResponse] = []
         narcotics_count = 0
+        narcotics_overrides = 0
 
         for sl in pending_lines:
             # Sale line
@@ -260,24 +268,36 @@ async def checkout(
                     branch_id, sl["drug_sku_id"],
                 )
 
+                # Override bookkeeping: when a reason is given, missing human
+                # fields are permitted and we stamp the authorising pharmacist.
+                override_reason = getattr(narc, "override_reason", None)
+                overridden_by = dispensing_user if override_reason else None
+                if override_reason:
+                    narcotics_overrides += 1
+
                 await db.execute(
                     """
                     INSERT INTO narcotics_register
                         (sale_line_id, branch_id, drug_sku_id,
                          dispensed_quantity_base_units, dispensed_by_user_id,
-                         patient_full_name, patient_id_type,
+                         patient_full_name, patient_age, patient_sex,
+                         patient_address, patient_id_type,
                          patient_id_number, prescribing_doctor_name,
                          prescribing_doctor_license, prescription_serial,
-                         prescription_image_url, running_balance_base_units)
-                    VALUES ($1, $2, $3, $4, $5, $6,
-                            $7::patient_id_type, $8, $9, $10, $11, $12, $13)
+                         prescription_image_url, running_balance_base_units,
+                         override_reason, overridden_by_user_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+                            $10::patient_id_type, $11, $12, $13, $14, $15, $16,
+                            $17, $18)
                     """,
                     sale_line["id"], branch_id, sl["drug_sku_id"],
                     sl["take_base"], dispensing_user,
-                    narc.patient_full_name, narc.patient_id_type,
+                    narc.patient_full_name, narc.patient_age, narc.patient_sex,
+                    narc.patient_address, narc.patient_id_type,
                     narc.patient_id_number, narc.prescribing_doctor_name,
                     narc.prescribing_doctor_license, narc.prescription_serial,
                     narc.prescription_image_url, running_bal,
+                    override_reason, overridden_by,
                 )
                 narcotics_count += 1
 
@@ -306,4 +326,5 @@ async def checkout(
         sale_status=sale["sale_status"],
         lines=response_lines,
         narcotics_entries=narcotics_count,
+        narcotics_overrides=narcotics_overrides,
     )
