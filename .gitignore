@@ -9,3 +9,10 @@ build/
 .venv/
 venv/
 firebase-credentials.json
+_archive_lmcp_extraction/
+backups/
+
+_archive_lmcp_extraction/
+backups/
+frontend/
+next-app/
